@@ -4,7 +4,7 @@
 wait
 
 ### gradle
-    compile 'com.github.iwgang:scaletablayout:1.0'
+    implementation 'com.github.iwgang:scaletablayout:1.0'
 
 ### use
 ``` 
