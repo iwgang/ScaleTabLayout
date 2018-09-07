@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ScaleTabLayout">
+        <attr name="stl_unSelTextSize" format="dimension"/>
+        <attr name="stl_selTextSize" format="dimension"/>
+        <attr name="stl_unSelTextColor" format="color"/>
+        <attr name="stl_selTextColor" format="color"/>
+        <attr name="stl_tabSpacing" format="dimension"/>
+        <attr name="stl_leftMargin" format="dimension"/>
+        <attr name="stl_rightMargin" format="dimension"/>
+        <attr name="stl_isSelTextBold" format="boolean"/>
+    </declare-styleable>
+
+</resources>

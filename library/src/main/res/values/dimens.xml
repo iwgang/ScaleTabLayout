@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+    <dimen name="stl_un_sel_text_size">16sp</dimen>
+    <dimen name="stl_sel_text_size">20sp</dimen>
+    <dimen name="stl_tab_spacing">20dp</dimen>
+    <dimen name="stl_left_right_margin">15dp</dimen>
+</resources>
