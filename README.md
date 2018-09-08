@@ -4,7 +4,7 @@
 ![](https://raw.githubusercontent.com/iwgang/ScaleTabLayout/master/screenshot/s.gif)  
 
 ### gradle
-    compile 'com.github.iwgang:scaletablayout:1.0'
+    implementation 'com.github.iwgang:scaletablayout:1.0'
 
 ### use
 ``` 
