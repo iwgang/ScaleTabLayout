@@ -1,7 +1,7 @@
 [![@iwgang](https://img.shields.io/badge/weibo-%40iwgang-blue.svg)](http://weibo.com/iwgang)
 
 ### screenshot
-wait
+![](https://raw.githubusercontent.com/iwgang/ScaleTabLayout/master/screenshot/s.gif)  
 
 ### gradle
     compile 'com.github.iwgang:scaletablayout:1.0'
