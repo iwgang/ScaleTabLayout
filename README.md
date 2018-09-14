@@ -1,4 +1,4 @@
-[![@iwgang](https://img.shields.io/badge/weibo-%40iwgang-blue.svg)](http://weibo.com/iwgang)
+[![Android Arsenal]( https://img.shields.io/badge/Android%20Arsenal-ScaleTabLayout-green.svg?style=flat )]( https://android-arsenal.com/details/1/7118 ) [![@iwgang](https://img.shields.io/badge/weibo-%40iwgang-blue.svg)](http://weibo.com/iwgang)
 
 ### screenshot
 ![](https://raw.githubusercontent.com/iwgang/ScaleTabLayout/master/screenshot/s.gif)  
