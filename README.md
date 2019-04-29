@@ -4,7 +4,7 @@
 ![](https://raw.githubusercontent.com/iwgang/ScaleTabLayout/master/screenshot/s.gif)  
 
 ### gradle
-    implementation 'com.github.iwgang:scaletablayout:1.0'
+    implementation 'com.github.iwgang:scaletablayout:1.2'
 
 ### use
 ``` 
@@ -22,6 +22,17 @@
         app:stl_unSelTextSize="16sp"/>
         
     scaleTabLayout.setViewPager(viewPager)
+
+    scaleTabLayout.addTab(index: Int, tag: String, isSelect: Boolean)
+
+    scaleTabLayout.removeTab(index: Int)
+
+    scaleTabLayout.getTabTextView(index: Int): TextView
+
+    scaleTabLayout.setCurrentItem(index: Int)
+
+    scaleTabLayout.setOnTabClickListener(listener: OnTabClickListener)
+
 ```
 
 ### attributes

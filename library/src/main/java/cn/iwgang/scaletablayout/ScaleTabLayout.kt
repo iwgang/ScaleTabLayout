@@ -1,9 +1,11 @@
 package cn.iwgang.scaletablayout
 
+import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.support.annotation.IntRange
 import android.support.v4.view.ViewPager
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -19,9 +21,9 @@ import android.widget.TextView
  * https://github.com/iwgang/ScaleTabLayout
  */
 class ScaleTabLayout : HorizontalScrollView {
-    private lateinit var mLlContainer: LinearLayout
-    private lateinit var mViewPager: ViewPager
+    private val mLlContainer by lazy { LinearLayout(context) }
 
+    private var mViewPager: ViewPager? = null
     private var mUnSelTextColor: Int = 0
     private var mSelTextColor: Int = 0
     private var mUnSelTextSize: Float = 0.0f
@@ -34,11 +36,7 @@ class ScaleTabLayout : HorizontalScrollView {
     private var mCurrentPagerPosition: Int = 0
     private var mSelTextScale: Float = 1.3f
     private var isClickAnimation: Boolean = false
-
-    companion object {
-        const val DEF_UN_SEL_TEXT_COLOR = Color.GRAY
-        const val DEF_SEL_TEXT_COLOR = Color.BLACK
-    }
+    private var mOnTabClickListener: OnTabClickListener? = null
 
     constructor(context: Context?) : this(context, null)
 
@@ -66,31 +64,47 @@ class ScaleTabLayout : HorizontalScrollView {
     }
 
     private fun initViews() {
-        mLlContainer = LinearLayout(context)
-        mLlContainer.orientation = LinearLayout.HORIZONTAL
         mLlContainer.gravity = Gravity.CENTER_VERTICAL
         addView(mLlContainer)
     }
 
     private fun clickTab(position: Int) {
-        if (mCurrentPagerPosition == position) return
+        val tempOldPagerPosition = mCurrentPagerPosition
 
-        val curPagerPosition = mCurrentPagerPosition
+        isClickAnimation = mCurrentPagerPosition != position
 
-        mViewPager.currentItem = position
-        isClickAnimation = true
+        if (null != mOnTabClickListener) {
+            mOnTabClickListener!!.onTabClick(position)
+        } else {
+            mViewPager?.currentItem = position
+        }
 
-        ValueAnimator.ofFloat(1.0f, 0f).setDuration(200).apply {
-            addUpdateListener {
-                val offsetValue = it.animatedValue as Float
-                inScale(position, offsetValue)
-                outScale(curPagerPosition, offsetValue)
+        if (isClickAnimation) {
+            if (isSelTextBold) {
+                (mLlContainer.getChildAt(tempOldPagerPosition) as TextView).run { typeface = Typeface.defaultFromStyle(Typeface.NORMAL) }
             }
-        }.start()
+            ValueAnimator.ofFloat(1.0f, 0f).setDuration(200).apply {
+                addUpdateListener {
+                    val offsetValue = it.animatedValue as Float
+                    inScale(position, offsetValue)
+                    outScale(tempOldPagerPosition, offsetValue)
+                }
+                if (null != mOnTabClickListener) {
+                    addListener(object : Animator.AnimatorListener {
+                        override fun onAnimationRepeat(animation: Animator?) {}
+                        override fun onAnimationCancel(animation: Animator?) {}
+                        override fun onAnimationStart(animation: Animator?) {}
+                        override fun onAnimationEnd(animation: Animator?) {
+                            finalSelect(position)
+                        }
+                    })
+                }
+            }.start()
+        }
     }
 
     private fun inScale(position: Int, offsetValue: Float) {
-        (mLlContainer.getChildAt(position) as TextView).apply {
+        (mLlContainer.getChildAt(position) as TextView).run {
             val scale = mSelTextScale + (1.0f - mSelTextScale) * offsetValue
             scaleX = scale
             scaleY = scale
@@ -99,7 +113,7 @@ class ScaleTabLayout : HorizontalScrollView {
     }
 
     private fun outScale(position: Int, offsetValue: Float) {
-        (mLlContainer.getChildAt(position) as TextView).apply {
+        (mLlContainer.getChildAt(position) as TextView).run {
             val scale = 1.0f + (mSelTextScale - 1.0f) * offsetValue
             scaleX = scale
             scaleY = scale
@@ -108,11 +122,14 @@ class ScaleTabLayout : HorizontalScrollView {
     }
 
     fun setViewPager(viewPager: ViewPager) {
+        if (null == viewPager.adapter) throw IllegalArgumentException("adapter is null")
+
         mViewPager = viewPager
         viewPager.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
-            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
-                if (isClickAnimation) return
+            var isUserDragging = false
 
+            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
+                if (!isUserDragging || isClickAnimation) return
                 inScale(position, positionOffset)
 
                 if (position + 1 < mLlContainer.childCount) {
@@ -123,46 +140,110 @@ class ScaleTabLayout : HorizontalScrollView {
             override fun onPageScrollStateChanged(state: Int) {
                 if (state == ViewPager.SCROLL_STATE_IDLE) {
                     isClickAnimation = false
+                    isUserDragging = false
+                } else if (state == ViewPager.SCROLL_STATE_DRAGGING) {
+                    isUserDragging = true
                 }
             }
 
             override fun onPageSelected(position: Int) {
-                val curTvTab = mLlContainer.getChildAt(position) as TextView
-                if (isSelTextBold) curTvTab.typeface = Typeface.defaultFromStyle(Typeface.BOLD)
-                smoothScrollTo(((curTvTab.left + curTvTab.width / 2) - width * 0.5).toInt(), 0)
-
-                if (isSelTextBold) {
-                    (mLlContainer.getChildAt(mCurrentPagerPosition) as TextView).apply {
-                        typeface = Typeface.defaultFromStyle(Typeface.NORMAL)
-                    }
-                }
-
-                mCurrentPagerPosition = position
+                finalSelect(position)
             }
         })
 
-        for (pos in 0 until viewPager.adapter!!.count) {
-            val tvTab = TextView(context).apply {
-                text = viewPager.adapter!!.getPageTitle(pos)
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, mUnSelTextSize)
-                setTextColor(mUnSelTextColor)
-                layoutParams = LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    when (pos) {
-                        0 -> {
-                            leftMargin = mLeftMargin.toInt()
-                            rightMargin = mTabSpacing.toInt()
-                            if (isSelTextBold) typeface = Typeface.defaultFromStyle(Typeface.BOLD)
-                        }
-                        viewPager.adapter!!.count - 1 -> rightMargin = mRightMargin.toInt()
-                        else -> rightMargin = mTabSpacing.toInt()
-                    }
-                }
-                setOnClickListener { clickTab(pos) }
+        for (index in 0 until viewPager.adapter!!.count) {
+            val indexFlag = when (index) {
+                0 -> 0
+                viewPager.adapter!!.count - 1 -> 1
+                else -> -1
             }
-            mLlContainer.addView(tvTab)
+            mLlContainer.addView(generateNewTab(index, viewPager.adapter!!.getPageTitle(index).toString(), indexFlag, index == mCurrentPagerPosition))
         }
     }
 
+    private fun finalSelect(position: Int) {
+        val curTvTab = mLlContainer.getChildAt(position) as TextView
+        if (!isClickAnimation) {
+            for (index in 0 until mLlContainer.childCount) {
+                outScale(index, 0f)
+                if (isSelTextBold) {
+                    (mLlContainer.getChildAt(index) as TextView).run { typeface = Typeface.defaultFromStyle(Typeface.NORMAL) }
+                }
+            }
+            curTvTab.run {
+                scaleX = mSelTextScale
+                scaleY = mSelTextScale
+                setTextColor(mSelTextColor)
+            }
+        }
+        if (isSelTextBold) curTvTab.typeface = Typeface.defaultFromStyle(Typeface.BOLD)
+        smoothScrollTo(((curTvTab.left + curTvTab.width / 2) - width * 0.5).toInt(), 0)
+        mCurrentPagerPosition = position
+    }
+
+    /**
+     * generate add TabView
+     * @param index     index
+     * @param tag       tag text
+     * @param indexFlag 0 first index, 1 last index, -1 middle
+     */
+    private fun generateNewTab(index: Int, tag: String, @IntRange(from = -1, to = 1) indexFlag: Int, isSelect: Boolean) = TextView(context).apply {
+        text = tag
+        setTextSize(TypedValue.COMPLEX_UNIT_PX, mUnSelTextSize)
+        setTextColor(mUnSelTextColor)
+        if (isSelect) {
+            scaleX = mSelTextScale
+            scaleY = mSelTextScale
+            setTextColor(mSelTextColor)
+        }
+        layoutParams = LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            if (isSelect && isSelTextBold) typeface = Typeface.defaultFromStyle(Typeface.BOLD)
+            when {
+                index == 0 || indexFlag == 0 -> {
+                    leftMargin = mLeftMargin.toInt()
+                    rightMargin = mTabSpacing.toInt()
+                }
+                indexFlag == 1 -> rightMargin = mRightMargin.toInt()
+                else -> rightMargin = mTabSpacing.toInt()
+            }
+        }
+        setOnClickListener { v -> clickTab(mLlContainer.indexOfChild(v)) }
+    }
+
+    fun addTab(tag: String, isSelect: Boolean = false) {
+        addTab(mLlContainer.childCount, tag, isSelect)
+    }
+
+    fun addTab(index: Int, tag: String, isSelect: Boolean = false) {
+        if (mLlContainer.childCount > 0) {
+            if (index == 0) {
+                val oldFirstTabView = mLlContainer.getChildAt(0)
+                oldFirstTabView.layoutParams = (oldFirstTabView.layoutParams as MarginLayoutParams).apply { leftMargin = 0 }
+            } else if (mLlContainer.childCount > 0) {
+                val lastFirstTabView = mLlContainer.getChildAt(mLlContainer.childCount - 1)
+                lastFirstTabView.layoutParams = (lastFirstTabView.layoutParams as MarginLayoutParams).apply { rightMargin = mTabSpacing.toInt() }
+            }
+        }
+        mLlContainer.addView(generateNewTab(index, tag, -1, isSelect), index)
+        if (isSelect) setCurrentItem(index)
+    }
+
+    fun removeTab(index: Int) {
+        mLlContainer.removeViewAt(index)
+    }
+
+    fun getTabTextView(index: Int): TextView? {
+        val findView = mLlContainer.getChildAt(index)
+        return if (null != findView) findView as TextView else null
+    }
+
+    fun setCurrentItem(index: Int) {
+        finalSelect(index)
+    }
+
+    fun setOnTabClickListener(listener: OnTabClickListener) {
+        mOnTabClickListener = listener
+    }
 
     private fun argbEvaluate(fraction: Float, startValue: Int, endValue: Int): Int {
         val startA = (startValue shr 24 and 0xff) / 255.0f
@@ -198,4 +279,15 @@ class ScaleTabLayout : HorizontalScrollView {
 
         return Math.round(a) shl 24 or (Math.round(r) shl 16) or (Math.round(g) shl 8) or Math.round(b)
     }
+
+
+    companion object {
+        private const val DEF_UN_SEL_TEXT_COLOR = Color.GRAY
+        private const val DEF_SEL_TEXT_COLOR = Color.BLACK
+    }
+
+    interface OnTabClickListener {
+        fun onTabClick(index: Int)
+    }
+
 }
